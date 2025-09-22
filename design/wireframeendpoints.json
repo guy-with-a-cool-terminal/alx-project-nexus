@@ -1,0 +1,773 @@
+openapi: 3.0.0
+info:
+  title: E-Commerce API
+  description: Multi-role e-commerce backend API with analytics and email automation
+  version: 1.0.0
+  contact:
+    name: Project Nexus
+    email: developer@example.com
+
+servers:
+  - url: http://localhost:8000/api
+    description: Development server
+  - url: https://api.ecommerce.example.com/api
+    description: Production server
+
+paths:
+  /auth/register/:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      description: Create new user account and send welcome email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+                - role
+              properties:
+                username:
+                  type: string
+                  example: john_seller
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  minLength: 8
+                  example: securepass123
+                first_name:
+                  type: string
+                  example: John
+                last_name:
+                  type: string
+                  example: Doe
+                role:
+                  type: string
+                  enum: [SELLER, CONSUMER, ADMIN]
+                  example: SELLER
+                phone_number:
+                  type: string
+                  example: "+254712345678"
+                address:
+                  type: string
+                  example: "123 Main St, Nairobi, Kenya"
+                store_name:
+                  type: string
+                  example: "John's Electronics"
+                  description: "Required only for SELLER role"
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: "User registered successfully. Welcome email sent."
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      tokens:
+                        $ref: '#/components/schemas/TokenPair'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /auth/login/:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user and return JWT tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  example: securepass123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      tokens:
+                        $ref: '#/components/schemas/TokenPair'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /products/:
+    get:
+      tags:
+        - Products
+      summary: List products
+      description: Get paginated list of products with filtering and sorting
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+          example: electronics
+        - name: min_price
+          in: query
+          schema:
+            type: number
+          example: 100
+        - name: max_price
+          in: query
+          schema:
+            type: number
+          example: 1000
+        - name: brand
+          in: query
+          schema:
+            type: string
+          example: Apple
+        - name: ordering
+          in: query
+          schema:
+            type: string
+            enum: [price, -price, created_at, -created_at, sales_count, -sales_count]
+          example: -sales_count
+        - name: page
+          in: query
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      count:
+                        type: integer
+                        example: 150
+                      next:
+                        type: string
+                        nullable: true
+                        example: "http://api.example.com/products/?page=2"
+                      previous:
+                        type: string
+                        nullable: true
+                        example: null
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ProductList'
+    
+    post:
+      tags:
+        - Products
+      summary: Create product
+      description: Create new product (Sellers own products, Admins can create for anyone)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: "Product created successfully"
+                  data:
+                    $ref: '#/components/schemas/ProductDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /products/{id}/:
+    get:
+      tags:
+        - Products
+      summary: Get product details
+      description: Retrieve detailed information about a specific product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Product details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/ProductDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /categories/:
+    get:
+      tags:
+        - Categories
+      summary: List categories
+      description: Get hierarchical list of all categories
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+
+  /analytics/overview/:
+    get:
+      tags:
+        - Analytics
+      summary: Analytics overview
+      description: Get platform-wide analytics summary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Analytics overview retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/AnalyticsOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /analytics/products/popular/:
+    get:
+      tags:
+        - Analytics
+      summary: Popular products
+      description: Get list of most popular products by sales
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Popular products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/PopularProducts'
+
+  /analytics/my-sales/:
+    get:
+      tags:
+        - Analytics
+      summary: Seller sales analytics
+      description: Get sales analytics for the authenticated seller
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Seller analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/SellerAnalytics'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: john_seller
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        role:
+          type: string
+          enum: [SELLER, CONSUMER, ADMIN]
+          example: SELLER
+        store_name:
+          type: string
+          nullable: true
+          example: "John's Electronics"
+        is_email_verified:
+          type: boolean
+          example: false
+        date_joined:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+    TokenPair:
+      type: object
+      properties:
+        access:
+          type: string
+          example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+        refresh:
+          type: string
+          example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+
+    ProductList:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "iPhone 15 Pro"
+        price:
+          type: string
+          example: "999.99"
+        sku:
+          type: string
+          example: "APPLE-IPH15-PRO-256"
+        category:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 2
+            name:
+              type: string
+              example: "Smartphones"
+            slug:
+              type: string
+              example: "smartphones"
+        seller:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1
+            username:
+              type: string
+              example: "john_seller"
+            store_name:
+              type: string
+              example: "John's Electronics"
+        stock_quantity:
+          type: integer
+          example: 25
+        is_featured:
+          type: boolean
+          example: true
+        sales_count:
+          type: integer
+          example: 15
+        brand:
+          type: string
+          example: "Apple"
+        primary_image:
+          type: object
+          nullable: true
+          properties:
+            image:
+              type: string
+              example: "https://res.cloudinary.com/.../iphone15.jpg"
+            alt_text:
+              type: string
+              example: "iPhone 15 Pro front view"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-10T08:15:00Z"
+
+    ProductDetail:
+      allOf:
+        - $ref: '#/components/schemas/ProductList'
+        - type: object
+          properties:
+            description:
+              type: string
+              example: "Latest iPhone with advanced features and titanium build"
+            tags:
+              type: string
+              example: "iphone, smartphone, ios, 5g, pro camera"
+            images:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  image:
+                    type: string
+                    example: "https://res.cloudinary.com/.../iphone15-front.jpg"
+                  alt_text:
+                    type: string
+                    example: "iPhone 15 Pro front view"
+                  is_primary:
+                    type: boolean
+                    example: true
+            updated_at:
+              type: string
+              format: date-time
+              example: "2024-01-12T16:30:00Z"
+
+    ProductCreate:
+      type: object
+      required:
+        - name
+        - description
+        - price
+        - sku
+        - category_id
+      properties:
+        name:
+          type: string
+          example: "Samsung Galaxy S24"
+        description:
+          type: string
+          example: "Flagship Android smartphone with AI features"
+        price:
+          type: string
+          example: "899.99"
+        sku:
+          type: string
+          example: "SAMSUNG-GS24-256-BLACK"
+        category_id:
+          type: integer
+          example: 2
+        stock_quantity:
+          type: integer
+          example: 30
+        brand:
+          type: string
+          example: "Samsung"
+        tags:
+          type: string
+          example: "smartphone, android, 5g, ai camera"
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Electronics"
+        description:
+          type: string
+          example: "Electronic devices and gadgets"
+        slug:
+          type: string
+          example: "electronics"
+        parent_category:
+          type: object
+          nullable: true
+          example: null
+        subcategories:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 2
+              name:
+                type: string
+                example: "Smartphones"
+              slug:
+                type: string
+                example: "smartphones"
+        product_count:
+          type: integer
+          example: 45
+        is_active:
+          type: boolean
+          example: true
+
+    AnalyticsOverview:
+      type: object
+      properties:
+        total_products:
+          type: integer
+          example: 245
+        total_sales:
+          type: integer
+          example: 1250
+        total_revenue:
+          type: string
+          example: "125,450.00"
+        active_sellers:
+          type: integer
+          example: 45
+        this_month:
+          type: object
+          properties:
+            sales:
+              type: integer
+              example: 89
+            revenue:
+              type: string
+              example: "8,750.00"
+            new_products:
+              type: integer
+              example: 12
+        top_categories:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+                example: "Electronics"
+              sales:
+                type: integer
+                example: 445
+              revenue:
+                type: string
+                example: "45,600.00"
+
+    PopularProducts:
+      type: object
+      properties:
+        period:
+          type: string
+          example: "last_30_days"
+        products:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 1
+              name:
+                type: string
+                example: "iPhone 15 Pro"
+              sales_count:
+                type: integer
+                example: 45
+              revenue:
+                type: string
+                example: "44,999.55"
+              seller:
+                type: string
+                example: "John's Electronics"
+
+    SellerAnalytics:
+      type: object
+      properties:
+        seller_id:
+          type: integer
+          example: 1
+        store_name:
+          type: string
+          example: "John's Electronics"
+        summary:
+          type: object
+          properties:
+            total_products:
+              type: integer
+              example: 15
+            total_sales:
+              type: integer
+              example: 78
+            total_revenue:
+              type: string
+              example: "18,945.50"
+            average_order_value:
+              type: string
+              example: "242.89"
+        monthly_trends:
+          type: array
+          items:
+            type: object
+            properties:
+              month:
+                type: string
+                example: "2024-01"
+              sales:
+                type: integer
+                example: 25
+              revenue:
+                type: string
+                example: "6,250.00"
+        top_products:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 1
+              name:
+                type: string
+                example: "iPhone 15 Pro"
+              sales:
+                type: integer
+                example: 15
+              revenue:
+                type: string
+                example: "14,999.85"
+
+  responses:
+    BadRequest:
+      description: Bad request - validation errors
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: error
+              message:
+                type: string
+                example: "Validation failed"
+              errors:
+                type: object
+                example:
+                  price: ["This field must be a positive number"]
+                  email: ["Enter a valid email address"]
+
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: error
+              message:
+                type: string
+                example: "Authentication credentials were not provided"
+              code:
+                type: string
+                example: "authentication_required"
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: error
+              message:
+                type: string
+                example: "You do not have permission to perform this action"
+              code:
+                type: string
+                example: "permission_denied"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: error
+              message:
+                type: string
+                example: "Product not found"
+              code:
+                type: string
+                example: "not_found"
