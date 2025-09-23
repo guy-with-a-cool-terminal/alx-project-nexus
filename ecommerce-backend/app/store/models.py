@@ -1,13 +1,13 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.core.validators import RegexValidator,MinValueValidator
+from django.core.validators import RegexValidator, MinValueValidator
 from decimal import Decimal
+from django.utils.text import slugify  # NEW IMPORT
 
 class User(AbstractUser):
     """ 
     custom user model that extends django AbstractUser
     supports multiple roles
-    
     """
     ROLE_CHOICES = [
         ('SELLER','Seller'),
@@ -43,7 +43,7 @@ class User(AbstractUser):
     # seller fields
     store_name = models.CharField(
         max_length=200,
-        blank=True,
+        blank=True,  # FIXED: Keep flexible for now, validate in views
         null=True,
         help_text="store name to identify the store"
     )
@@ -140,6 +140,22 @@ class Category(models.Model):
         verbose_name_plural = 'Categories'
         ordering = ['name']
     
+    def save(self, *args, **kwargs):
+        """Auto-generate slug from name if empty, ensure uniqueness"""
+        if not self.slug:
+            base_slug = slugify(self.name)
+            slug = base_slug
+            counter = 1
+            
+            # Ensure slug is unique
+            while Category.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+                
+            self.slug = slug
+            
+        super().save(*args, **kwargs)
+    
     def __str__(self):
         """String representation shows full category path"""
         if self.parent_category:
@@ -184,7 +200,7 @@ class Product(models.Model):
     # Unique product identifier for inventory management
     sku = models.CharField(
         max_length=100,
-        unique=True,
+        unique=True,  # FIXED: Keep unique for now, but monitor in production
         help_text="Stock Keeping Unit - unique product identifier"
     )
     
