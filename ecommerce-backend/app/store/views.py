@@ -12,6 +12,7 @@ from .serializers import (
     ProductListSerializer, ProductDetailSerializer, ProductImageSerializer,
     ProductSaleSerializer, EmailLogSerializer
 )
+from .filters import ProductFilter
 
 class UserViewSet(viewsets.ModelViewSet):
     """
@@ -142,6 +143,12 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = ProductFilter
+    search_fields = ['name', 'description', 'brand', 'tags']
+    ordering_fields = ['price', 'created_at', 'sales_count', 'name']
+    ordering = ['-created_at']
+    
     def get_serializer_class(self):
         """
         use detail serializer for retrieve,use list serializer for list
@@ -221,12 +228,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_201_CREATED
         )
-        filter_backends = [DjangoFilterBackend,filters.SearchFilter,filters.OrderingFilter]
-        filterset_fields = ['category','seller','is_active','is_featured','brand']
-        search_fields = ['name','description','brand','tags']
-        ordering_fields = ['price','created_at','sales_count','name']
-        ordering = ['-created_at']
-
+        
 class ProductImageViewSet(viewsets.ModelViewSet):
     """
     Handles product image operations.
