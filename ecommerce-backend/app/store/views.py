@@ -12,6 +12,7 @@ from .serializers import (
     ProductListSerializer, ProductDetailSerializer, ProductImageSerializer,
     ProductSaleSerializer, EmailLogSerializer
 )
+from .utils.email_service import EmailService 
 from .filters import ProductFilter
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -56,7 +57,9 @@ class UserViewSet(viewsets.ModelViewSet):
         # create user
         user = serializer.save()
         
-        # TODO: send welcome email and log the email
+        # send welcome email
+        EmailService.send_welcome_email(user)
+        
         return Response(
             {
                 "message": "User registered successfully.",

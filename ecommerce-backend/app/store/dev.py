@@ -1,16 +1,24 @@
-class ProductViewSet(viewsets.ModelViewSet):
-    """
-    handles product CRUD ops with seller-based permissions
-    """
-    queryset = Product.objects.all()
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+from .utils.email_service import EmailService  # Add this import
+
+class UserViewSet(viewsets.ModelViewSet):
+    # ... existing code ...
     
-    # MOVE THESE LINES HERE (proper indentation):
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_class = ProductFilter
-    search_fields = ['name', 'description', 'brand', 'tags']
-    ordering_fields = ['price', 'created_at', 'sales_count', 'name']
-    ordering = ['-created_at']
-    
-    def get_serializer_class(self):
-        # ... rest of your code stays the same ...
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # ... your existing validation logic ...
+        
+        user = serializer.save()
+        
+        # Send welcome email (non-blocking)
+        EmailService.send_welcome_email(user)
+        
+        return Response(
+            {
+                "message": "User registered successfully.",
+                "user_id": user.id,
+                "username": user.username
+            },
+            status=status.HTTP_201_CREATED
+        )

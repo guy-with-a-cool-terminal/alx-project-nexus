@@ -1,6 +1,9 @@
 from pathlib import Path
 from datetime import timedelta
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -133,9 +136,10 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
-
-# Internationalization
-# https://docs.djangoproject.com/en/5.1/topics/i18n/
+# SendGrid Configuration
+SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY')
+EMAIL_BACKEND = 'sgbackend.SendGridBackend'
+DEFAULT_FROM_EMAIL = 'noreply@cnbcode.com'
 
 LANGUAGE_CODE = 'en-us'
 

@@ -32,6 +32,7 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - REDIS_URL=redis://redis:6379/1
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
 
 volumes:
   postgres_data:
