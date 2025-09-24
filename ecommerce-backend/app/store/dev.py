@@ -1,11 +1,12 @@
-def perform_create(self, serializer):
-    """
-    Automatically set the seller to the current user
-    """
-    from rest_framework.exceptions import PermissionDenied  # Add this line
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
+
+class ProductViewSet(viewsets.ModelViewSet):
+    # ... your existing code ...
     
-    # Ensure only sellers can create products
-    if not self.request.user.is_seller:
-        raise PermissionDenied("Only sellers can create products!")  # Remove 'permissions.'
-    
-    serializer.save(seller=self.request.user)
+    # ADD THESE LINES
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['category', 'seller', 'is_active', 'is_featured', 'brand']
+    search_fields = ['name', 'description', 'brand', 'tags']
+    ordering_fields = ['price', 'created_at', 'sales_count', 'name']
+    ordering = ['-created_at']  # default ordering

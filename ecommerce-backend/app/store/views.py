@@ -2,6 +2,8 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
 from django.db.models import Q, Count, Sum
 from django.utils import timezone
 from .models import User, Category, Product, ProductImage, ProductSale, EmailLog
@@ -219,6 +221,11 @@ class ProductViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_201_CREATED
         )
+        filter_backends = [DjangoFilterBackend,filters.SearchFilter,filters.OrderingFilter]
+        filterset_fields = ['category','seller','is_active','is_featured','brand']
+        search_fields = ['name','description','brand','tags']
+        ordering_fields = ['price','created_at','sales_count','name']
+        ordering = ['-created_at']
 
 class ProductImageViewSet(viewsets.ModelViewSet):
     """
