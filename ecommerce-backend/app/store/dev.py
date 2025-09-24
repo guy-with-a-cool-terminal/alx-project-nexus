@@ -1,21 +1,11 @@
-from django.utils.text import slugify
-from django.db import models
-
-class Category(models.Model):
-    # ... your existing fields ...
+def perform_create(self, serializer):
+    """
+    Automatically set the seller to the current user
+    """
+    from rest_framework.exceptions import PermissionDenied  # Add this line
     
-    def save(self, *args, **kwargs):
-        """Auto-generate slug from name if empty, ensure uniqueness"""
-        if not self.slug:
-            base_slug = slugify(self.name)
-            slug = base_slug
-            counter = 1
-            
-            # Ensure slug is unique
-            while Category.objects.filter(slug=slug).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
-                
-            self.slug = slug
-            
-        super().save(*args, **kwargs)
+    # Ensure only sellers can create products
+    if not self.request.user.is_seller:
+        raise PermissionDenied("Only sellers can create products!")  # Remove 'permissions.'
+    
+    serializer.save(seller=self.request.user)

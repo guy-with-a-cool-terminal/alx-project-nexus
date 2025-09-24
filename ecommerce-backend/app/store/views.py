@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 from django.db.models import Q, Count, Sum
 from django.utils import timezone
 from .models import User, Category, Product, ProductImage, ProductSale, EmailLog
@@ -177,7 +178,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         """
         # ensure only sellers can create products
         if not self.request.user.is_seller:
-            raise permissions.PermissionDenied("Only sellers can create products!")
+            raise PermissionDenied("Only sellers can create products!")
         serializer.save(seller=self.request.user)
     
     def update(self,request,*args,**kwargs):
@@ -186,7 +187,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         """
         product = self.get_object()
         if product.seller != request.user and not request.user.is_staff:
-            raise permissions.PermissionDenied("You can only edit your own products!")
+            raise PermissionDenied("You can only edit your own products!")
         return super().update(request,*args,**kwargs)
     
     @action(detail=True,methods=['post'])
@@ -243,7 +244,7 @@ class ProductImageViewSet(viewsets.ModelViewSet):
         """
         product = serializer.validated_data['product']
         if product.seller != self.request.user and not self.request.user.is_staff:
-            raise permissions.PermissionDenied("You can only add images to your own products.")
+            raise PermissionDenied("You can only add images to your own products.")
         
         serializer.save()
 
@@ -259,7 +260,7 @@ class AnalyticsViewSet(viewsets.ViewSet):
         Get analytics data for the current seller.
         """
         if not request.user.is_seller:
-            raise permissions.PermissionDenied("Only sellers can access analytics.")
+            raise PermissionDenied("Only sellers can access analytics.")
         
         # Basic sales analytics
         sales_data = ProductSale.objects.filter(seller=request.user).aggregate(
