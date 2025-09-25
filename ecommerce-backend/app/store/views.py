@@ -13,6 +13,7 @@ from .serializers import (
     ProductSaleSerializer, EmailLogSerializer
 )
 from .utils.email_service import EmailService 
+from .utils.notification_service import NotificationService
 from .filters import ProductFilter
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -207,7 +208,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         product = self.get_object()
         if product.seller != request.user and not request.user.is_staff:
             raise PermissionDenied("You can only edit your own products!")
-        return super().update(request,*args,**kwargs)
+        response = super().update(request,*args,**kwargs)
+        
+        # check for low stock after update
+        updated_product = self.get_object()
+        NotificationService.check_and_notify_low_stock(updated_product)
+        
+        return response
     
     @action(detail=True,methods=['post'])
     def record_sale(self,request,pk=None):
@@ -215,20 +222,29 @@ class ProductViewSet(viewsets.ModelViewSet):
         record a product sale
         """
         product = self.get_object()
-        serializer = ProductSaleSerializer(data=request.data)
+        
+        # Auto-set price_at_sale from product's current price
+        initial_data = request.data.copy()
+        initial_data['price_at_sale'] = str(product.price)
+        
+        serializer = ProductSaleSerializer(data=initial_data)
         serializer.is_valid(raise_exception=True)
         
         # create sale record
         sale = serializer.save(
             product=product,
             seller=product.seller,
-            buyer=request.user if request.user.is_authenticated else None
+            buyer=request.user if request.user.is_authenticated else None,
+            price_at_sale=product.price
         )
         
         # update product stock and sales count
         product.stock_quantity -=sale.quantity
         product.sales_count +=sale.quantity
         product.save()
+        
+        # check for low stock after sale
+        NotificationService.check_and_notify_low_stock(product)
         
         return Response(
             {

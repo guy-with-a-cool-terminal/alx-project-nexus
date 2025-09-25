@@ -144,6 +144,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     Optimized serializer for product listings (fewer fields for performance).
     Includes essential related data for display in lists.
     """
+    seller = serializers.PrimaryKeyRelatedField(read_only=True)
     seller_name = serializers.CharField(source='seller.username', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
     primary_image = serializers.SerializerMethodField()
@@ -158,7 +159,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             'is_featured', 'sales_count', 'brand', 'is_in_stock',
             'is_low_stock', 'primary_image', 'created_at'
         ]
-        read_only_fields = ['sales_count', 'created_at']
+        read_only_fields = ['sales_count', 'created_at','seller',]
 
     def get_primary_image(self, obj):
         """Get the primary product image URL if available"""
@@ -184,9 +185,12 @@ class ProductSaleSerializer(serializers.ModelSerializer):
     Handles product sale recording with price validation.
     Includes related product and buyer information.
     """
+    product = serializers.PrimaryKeyRelatedField(read_only=True)
     product_name = serializers.CharField(source='product.name', read_only=True)
+    seller = serializers.PrimaryKeyRelatedField(read_only=True)
     seller_name = serializers.CharField(source='seller.username', read_only=True)
     buyer_name = serializers.CharField(source='buyer.username', read_only=True)
+    price_at_sale = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     total_amount = serializers.DecimalField(
         max_digits=12, 
         decimal_places=2, 
@@ -201,7 +205,7 @@ class ProductSaleSerializer(serializers.ModelSerializer):
             'buyer', 'buyer_name', 'quantity', 'price_at_sale', 'total_amount',
             'sale_date'
         ]
-        read_only_fields = ['id', 'sale_date']
+        read_only_fields = ['id', 'sale_date', 'seller', 'product','price_at_sale']
     
     def validate(self,attrs):
         """
@@ -219,7 +223,7 @@ class ProductSaleSerializer(serializers.ModelSerializer):
             if not attrs.get('price_at_sale'):
                 attrs['price_at_sale'] = product.price
             
-            return attrs
+        return attrs
 
 class EmailLogSerializer(serializers.ModelSerializer):
     """
