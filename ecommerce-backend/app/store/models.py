@@ -144,6 +144,10 @@ class Category(models.Model):
         verbose_name = 'Category'
         verbose_name_plural = 'Categories'
         ordering = ['name']
+        indexes = [
+            models.Index(fields=['is_active']),
+            models.Index(fields=['parent_category']),
+        ]
     
     def save(self, *args, **kwargs):
         """Auto-generate slug from name if empty, ensure uniqueness"""
@@ -269,10 +273,12 @@ class Product(models.Model):
         ordering = ['-created_at']  #newest first
         # database indexes for performance
         indexes = [
-            models.Index(fields=['category']),
-            models.Index(fields=['seller']),
-            models.Index(fields=['is_active']),
+            models.Index(fields=['category','is_active']),
+            models.Index(fields=['seller','is_active']),
             models.Index(fields=['price']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['is_featured']),
+            models.Index(fields=['stock_quantity']),
         ]
         
     def __str__(self):
@@ -389,8 +395,8 @@ class ProductSale(models.Model):
         verbose_name_plural = 'Product Sales'
         ordering = ['-sale_date']
         indexes = [
-            models.Index(fields=['seller']),
-            models.Index(fields=['product']),
+            models.Index(fields=['seller','sale_date']),
+            models.Index(fields=['product','sale_date']),
             models.Index(fields=['sale_date']),
         ]
     

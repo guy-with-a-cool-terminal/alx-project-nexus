@@ -5,6 +5,7 @@ import os
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
+from store.utils.encoders import DRFCloudinaryEncoder
 
 load_dotenv()
 
@@ -145,6 +146,12 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
+}
+
+# cloudinary custom JSON Encoding
+JSON_ENCODER = 'store.utils.encoders.CloudinaryAwareEncoder'
+REST_FRAMEWORK_EXTENSIONS = {
+    'DEFAULT_JSON_ENCODER_CLASS': 'store.utils.encoders.CloudinaryAwareEncoder'
 }
 
 # SendGrid Configuration

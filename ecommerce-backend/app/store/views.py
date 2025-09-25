@@ -6,6 +6,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from django.db.models import Q, Count, Sum, Avg
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from .models import User, Category, Product, ProductImage, ProductSale, EmailLog
 from .serializers import (
     UserRegistrationSerializer, UserProfileSerializer, CategorySerializer,
@@ -78,6 +80,7 @@ class UserViewSet(viewsets.ModelViewSet):
         )
     
     @action(detail=False,methods=['get','put','patch'])
+    @method_decorator(cache_page(60 * 5))
     def me(self,request):
         """
         Get or update user's profile
@@ -118,6 +121,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
         return queryset
     
     @action(detail=True,methods=['get'])
+    @method_decorator(cache_page(60 * 30))
     def products(self,request,pk=None):
         """
         get all products in a specific category including subcategories
@@ -146,6 +150,11 @@ class CategoryViewSet(viewsets.ModelViewSet):
             
         serializer = ProductListSerializer(products, many=True)
         return Response(serializer.data)
+    
+    # caching
+    @method_decorator(cache_page(60 * 60))
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
 class ProductViewSet(viewsets.ModelViewSet):
     """
@@ -285,6 +294,15 @@ class ProductViewSet(viewsets.ModelViewSet):
             "message": f"Successfully uploaded {len(created_images)} images",
             "images": ProductImageSerializer(created_images, many=True).data
         }, status=status.HTTP_201_CREATED)
+    
+    #caching
+    @method_decorator(cache_page(60 * 15))
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+    
+    @method_decorator(cache_page(60 * 30))
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
         
 class ProductImageViewSet(viewsets.ModelViewSet):
     """
@@ -321,6 +339,7 @@ class AnalyticsViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     @action(detail=False, methods=['get'])
+    @method_decorator(cache_page(60 * 60))
     def seller_dashboard(self, request):
         """
         Get analytics data for the current seller.
@@ -419,6 +438,7 @@ class AnalyticsViewSet(viewsets.ViewSet):
         })
     
     @action(detail=False,methods=['get'])
+    @method_decorator(cache_page(60 * 60))
     def admin_dashboard(self,request):
         """
         system-wide analytics for admins
