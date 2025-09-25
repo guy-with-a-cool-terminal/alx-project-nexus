@@ -62,8 +62,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
     handles user profile updates except sensitive fields eg passwords
     Read-only fields
     """
-    role = serializers.CharField(read_only=True)  #users can't change roles
+    role = serializers.CharField(read_only=True)  # users can't change roles
     is_email_verified = serializers.BooleanField(read_only=True)
+    profile_picture = serializers.ImageField(required=False, allow_null=True)
     
     class Meta:
         model = User
@@ -116,6 +117,8 @@ class ProductImageSerializer(serializers.ModelSerializer):
     """
     handle product image serialization with primary image validation
     """
+    image = serializers.ImageField(required=True)
+    
     class Meta:
         model = ProductImage
         fields = ['id', 'product', 'image', 'alt_text', 'is_primary', 'created_at']

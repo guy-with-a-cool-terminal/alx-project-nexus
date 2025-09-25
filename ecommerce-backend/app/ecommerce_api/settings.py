@@ -1,9 +1,18 @@
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv 
 import os
-from dotenv import load_dotenv
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 
 load_dotenv()
+
+cloudinary.config( 
+  cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
+  api_key=os.getenv('CLOUDINARY_API_KEY'),
+  api_secret=os.getenv('CLOUDINARY_API_SECRET')
+)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,6 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'django_filters',
+    'cloudinary',
+    'cloudinary_storage',
     'store',
 ]
 
@@ -141,6 +152,10 @@ SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY')
 EMAIL_BACKEND = 'sgbackend.SendGridBackend'
 DEFAULT_FROM_EMAIL = 'noreply@cnbcode.com'
 
+# Media files configuration
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+# locale settings
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'

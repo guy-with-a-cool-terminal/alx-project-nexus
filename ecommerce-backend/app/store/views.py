@@ -254,6 +254,37 @@ class ProductViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_201_CREATED
         )
+    
+    @action(detail=True,methods=['post'])
+    def upload_images(self,request,pk=None):
+        """upload multiple images for a product"""
+        product = self.get_object()
+        
+        # permission check
+        if product.seller != request.user and not request.user.is_staff:
+            raise PermissionDenied("You can only add images to your own products!")
+        
+        images = request.FILES.getlist('images')
+        if not images:
+            return Response(
+                {"error": "No images provided"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        created_images = []
+        for image_file in images:
+            image = ProductImage.objects.create(
+                product=product,
+                image=image_file,
+                alt_text=request.data.get('alt_text', f"Image of {product.name}"),
+                is_primary=False
+            )
+            created_images.append(image)
+        
+        return Response({
+            "message": f"Successfully uploaded {len(created_images)} images",
+            "images": ProductImageSerializer(created_images, many=True).data
+        }, status=status.HTTP_201_CREATED)
         
 class ProductImageViewSet(viewsets.ModelViewSet):
     """

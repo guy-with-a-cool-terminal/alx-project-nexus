@@ -2,7 +2,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.validators import RegexValidator, MinValueValidator
 from decimal import Decimal
-from django.utils.text import slugify  # NEW IMPORT
+from django.utils.text import slugify
+from cloudinary.models import CloudinaryField
 
 class User(AbstractUser):
     """ 
@@ -46,17 +47,18 @@ class User(AbstractUser):
     # seller fields
     store_name = models.CharField(
         max_length=200,
-        blank=True,  # FIXED: Keep flexible for now, validate in views
+        blank=True,
         null=True,
         help_text="store name to identify the store"
     )
     
     # profile info
-    profile_picture = models.CharField(
-        max_length=500,   # this will store image urls
-        blank=True,
+    profile_picture = CloudinaryField(
+        'image',
+        folder='ecommerce/user_profiles/', 
+        blank=True, 
         null=True,
-        help_text="profile image url from cloudinary"
+        help_text="User profile picture"
     )
     
     # account status tracking for security
@@ -301,11 +303,13 @@ class ProductImage(models.Model):
         help_text="associated product"
     )
     
-    # image url(i will handle cases where users need to upload files---upload---save on our bucket---get url)
-    image = models.CharField(
-        max_length=500,
-        help_text="image URL"
+    # image stored on cloudinary
+    image = CloudinaryField(
+        'image',
+        folder='ecommerce/products/',
+        help_text="Product image"
     )
+    
     # Alt text for accessibility and SEO
     alt_text = models.CharField(
         max_length=255,

@@ -13,6 +13,7 @@ router.register(r'product-images', views.ProductImageViewSet, basename='producti
 urlpatterns = [
     path('auth/login/',TokenObtainPairView.as_view(),name='token_obtain_pair'),
     path('auth/refresh/',TokenRefreshView.as_view(),name='token_refresh'),
+    path('products/<int:pk>/upload-images/', views.ProductViewSet.as_view({'post': 'upload_images'}), name='product-upload-images'),
     path('analytics/sales-report/', views.AnalyticsViewSet.as_view({'get': 'sales_report'}), name='analytics-sales-report'),
     path('analytics/product-analytics/', views.AnalyticsViewSet.as_view({'get': 'product_analytics'}), name='analytics-products'),
     path('analytics/seller-dashboard/', views.AnalyticsViewSet.as_view({'get': 'seller_dashboard'}), name='analytics-dashboard'),
