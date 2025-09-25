@@ -9,6 +9,9 @@ class User(AbstractUser):
     custom user model that extends django AbstractUser
     supports multiple roles
     """
+    # unique email constraint
+    email = models.EmailField(unique=True,blank=False)
+    
     ROLE_CHOICES = [
         ('SELLER','Seller'),
         ('CONSUMER', 'Consumer'), 

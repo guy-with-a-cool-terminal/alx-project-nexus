@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
-from django.db.models import Q, Count, Sum
+from django.db.models import Q, Count, Sum, Avg
 from django.utils import timezone
 from .models import User, Category, Product, ProductImage, ProductSale, EmailLog
 from .serializers import (
@@ -47,15 +47,21 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
+        # force CONSUMER role to avoid admin registration
+        #TODO implement an admin user invite system instead
+        validated_data = serializer.validated_data.copy()
+        validated_data['role'] = 'CONSUMER'
+        
         # sellers must provide store name
-        if serializer.validated_data.get('role') == 'SELLER':
+        if request.data.get('role') == 'SELLER':
             if not request.data.get('store_name'):
                 return Response(
                     {"store_name": "Store name is required for seller registration!"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+            validated_data['role'] = 'SELLER' # allow seller registration
         # create user
-        user = serializer.save()
+        user = serializer.save(**validated_data)
         
         # send welcome email
         EmailService.send_welcome_email(user)
@@ -64,7 +70,8 @@ class UserViewSet(viewsets.ModelViewSet):
             {
                 "message": "User registered successfully.",
                 "user_id": user.id,
-                "username":user.username
+                "username": user.username,
+                "role": user.role
             },
             status=status.HTTP_201_CREATED
         )
@@ -274,18 +281,167 @@ class AnalyticsViewSet(viewsets.ViewSet):
         if not request.user.is_seller:
             raise PermissionDenied("Only sellers can access analytics.")
         
-        # Basic sales analytics
+        # sales analytics
         sales_data = ProductSale.objects.filter(seller=request.user).aggregate(
             total_sales=Count('id'),
             total_revenue=Sum('price_at_sale'),
-            total_units_sold=Sum('quantity')
+            total_units_sold=Sum('quantity'),
+            avg_order_value=Avg('price_at_sale')
         )
         
-        # Recent sales
-        recent_sales = ProductSale.objects.filter(seller=request.user)\
-                                         .select_related('product', 'buyer')[:10]
+        # product performance
+        top_products = Product.objects.filter(seller=request.user).annotate(
+            total_revenue=Sum('sales__price_at_sale'),
+            total_units=Sum('sales__quantity')
+        ).order_by('-total_revenue')[:5]
+        
+        # recent sales..last 7 days
+        recent_sales = ProductSale.objects.filter(
+            seller=request.user,
+            sale_date__gte=timezone.now() - timezone.timedelta(days=7)
+        ).select_related('product','buyer')
+        
+        # stock alerts
+        low_stock_products = Product.objects.filter(
+            seller=request.user,
+            stock_quantity__lte=10
+        )
         
         return Response({
             'sales_summary': sales_data,
-            'recent_sales': ProductSaleSerializer(recent_sales, many=True).data
+            'top_products': ProductListSerializer(top_products,many=True).data,
+            'recent_sales_count': recent_sales.count(),
+            'low_stock_alerts': low_stock_products.count(),
+            'recent_sales': ProductSaleSerializer(recent_sales,many=True).data
+        })
+    
+    @action(detail=False,methods=['get'])
+    def sales_report(self,request):
+        """
+        Get detail sales report with date filtering
+        """
+        if not request.user.is_seller:
+            raise PermissionDenied("Only sellers can access analytics!")
+        
+        # date filtering
+        days = int(request.query_params.get('days',30)) # 30 days default
+        start_date = timezone.now() - timezone.timedelta(days=days)
+        
+        sales = ProductSale.objects.filter(
+            seller=request.user,
+            sale_date__gte=start_date
+        )
+        
+        report_data = sales.aggregate(
+            total_sales=Count('id'),
+            total_revenue=Sum('price_at_sale'),
+            average_sale=Avg('price_at_sale'),
+            total_units=Sum('quantity')
+        )
+        
+        # daily breakdown
+        daily_sales = sales.extra(
+            {'sale_day': "date(sale_date)"}
+        ).values('sale_day').annotate(
+            daily_revenue=Sum('price_at_sale'),
+            daily_sales=Count('id')
+        ).order_by('sale_day')
+        
+        return Response({
+            'report_period':f'Last {days} days',
+            'summary':report_data,
+            'daily_breakdown':list(daily_sales)
+        })
+    
+    @action(detail=False,methods=['get'])
+    def product_analytics(self,request):
+        """
+        Get detailed analytics for all seller's products.
+        """
+        if not request.user.is_seller:
+            raise PermissionDenied("Only sellers can access analytics.")
+        
+        products = Product.objects.filter(seller=request.user).annotate(
+            total_revenue=Sum('sales__price_at_sale'),
+            total_units_sold=Sum('sales__quantity'),
+            sale_count=Count('sales')
+        ).order_by('-total_revenue')
+    
+        return Response({
+            'products': ProductListSerializer(products, many=True).data
+        })
+    
+    @action(detail=False,methods=['get'])
+    def admin_dashboard(self,request):
+        """
+        system-wide analytics for admins
+        """
+        if not request.user.is_staff:
+            raise PermissionDenied("Only admin users can access this data!")
+        
+        # platform overview
+        platform_data = {
+            'total_users': User.objects.count(),
+            'total_sellers': User.objects.filter(role='SELLER').count(),
+            'total_products': Product.objects.count(),
+            'total_sales': ProductSale.objects.count(),
+            'total_revenue': ProductSale.objects.aggregate(Sum('price_at_sale'))['price_at_sale__sum'] or 0,
+        }
+        
+        # recent platform activity
+        recent_sales = ProductSale.objects.select_related('product','seller','buyer')[:10]
+        new_users = User.objects.order_by('-date_joined')[:5]
+        
+        # seller performance rankings
+        top_sellers = User.objects.filter(role='SELLER').annotate(
+            total_revenue=Sum('sales_as_seller__price_at_sale'),
+            total_sales=Count('sales_as_seller')
+        ).order_by('-total_revenue')[:5]
+        
+        return Response({
+            'platform_overview': platform_data,
+            'recent_sales': ProductSaleSerializer(recent_sales, many=True).data,
+            'recent_users': UserProfileSerializer(new_users, many=True).data,
+            'top_sellers': [
+                {
+                    'username': seller.username,
+                    'store_name': seller.store_name,
+                    'total_revenue': seller.total_revenue or 0,
+                    'total_sales': seller.total_sales or 0
+                }
+                for seller in top_sellers
+            ]
+        })
+    
+    @action(detail=False,methods=['get'])
+    def sales_trends(self,request):
+        """
+        sales trends and growth analytics for admins
+        """
+        if not request.user.is_staff:
+            raise PermissionDenied("Only admin users can access this data.")
+        
+        days = int(request.query_params.get('days', 30))
+        start_date = timezone.now() - timezone.timedelta(days=days)
+        
+        # daily sales trend
+        daily_trends = ProductSale.objects.filter(
+            sale_date__gte=start_date
+        ).extra({
+            'sale_day': "DATE(sale_date)"
+        }).values('sale_day').annotate(
+            daily_revenue=Sum('price_at_sale'),
+            daily_sales=Count('id')
+        ).order_by('sale_day')
+        
+        # category performance
+        category_performance = Category.objects.annotate(
+            total_revenue=Sum('products__sales__price_at_sale'),
+            total_sales=Count('products__sales')
+        ).values('name', 'total_revenue', 'total_sales')
+        
+        return Response({
+            'period': f'Last {days} days',
+            'daily_trends': list(daily_trends),
+            'category_performance': list(category_performance)
         })
