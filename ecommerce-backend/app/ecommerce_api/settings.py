@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'django_filters',
+    'drf_yasg',
     'cloudinary',
     'cloudinary_storage',
     'store',
@@ -148,6 +149,23 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
+# Swagger settings for JWT
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+            'description': 'JWT authorization. Example: "Bearer {token}"'
+        }
+    },
+    'USE_SESSION_AUTH': False,  # Disable Django session login
+}
+
+# Optional: If you want a nicer ReDoc display
+REDOC_SETTINGS = {
+    'SPEC_URL': ('schema-json', {'format': '.json'}),
+}
 # cloudinary custom JSON Encoding
 JSON_ENCODER = 'store.utils.encoders.CloudinaryAwareEncoder'
 REST_FRAMEWORK_EXTENSIONS = {
