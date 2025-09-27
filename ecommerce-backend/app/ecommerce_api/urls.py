@@ -24,6 +24,7 @@ def root_handler(request):
     return JsonResponse({
         "message": "ALX-Project-Nexus-E-Commerce API", 
         "version": "1.0",
+        "Base API URL":"/api/v1",
         "developer documentation": "/swagger/",
         "read-only documentation": "/redoc/",
         "status": "active"

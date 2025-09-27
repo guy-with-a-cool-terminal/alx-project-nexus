@@ -53,9 +53,8 @@ class UserViewSet(viewsets.ModelViewSet):
         # force CONSUMER role to avoid admin registration
         #TODO implement an admin user invite system instead
         validated_data = serializer.validated_data.copy()
-        validated_data['role'] = 'CONSUMER'
         
-        # sellers must provide store name
+        # handle seller registration with validation
         if request.data.get('role') == 'SELLER':
             if not request.data.get('store_name'):
                 return Response(
@@ -63,6 +62,10 @@ class UserViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             validated_data['role'] = 'SELLER' # allow seller registration
+        
+        else:
+            validated_data['role'] = 'CONSUMER'
+            
         # create user
         user = serializer.save(**validated_data)
         
