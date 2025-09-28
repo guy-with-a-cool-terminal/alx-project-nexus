@@ -1,43 +1,91 @@
-# ALX Project Nexus
+# E-Commerce API - Project Nexus
 
-## Overview of the ProDev Backend Engineering Program
+This is a robust backend API for an e-commerce platform, built using Django REST Framework. The project supports a multi-role system, including Sellers, Consumers, and Admins. It provides features for efficient product management, secure user authentication, and advanced product discovery with filtering, sorting, and pagination.
 
-The ProDev Backend Engineering Program is an intensive backend development program focused on building production-ready backend systems. The program covers modern backend technologies, system architecture, and industry best practices through hands-on projects and milestone-driven learning.
+## Features
 
-## Major Learnings
+* **Multi-role System:** Sellers, Consumers, and Admins
+* **Product Management:** Full CRUD operations with advanced filtering and search capabilities
+* **Hierarchical Categories:** Support for nested product categories
+* **User Authentication:** JWT-based authentication with refresh tokens
+* **Sales Analytics:** Insights and reporting for product performance
+* **Automated Email Notifications:** Notify users and admins based on specific events
+* **Image Storage:** Integrated with Cloudinary for media management
+* **Performance Optimized:** Database indexing for fast queries
 
-### Key Technologies Covered
+## Tech Stack
 
-- **Python**: Advanced concepts including decorators, generators, context managers, and asynchronous programming
-- **Django**: Complete framework mastery covering models, serializers, views, permissions, middlewares, ORM, and signals
-- **REST APIs**: RESTful API design principles and implementation
-- **GraphQL**: Modern API query language and runtime
-- **Docker**: Containerization for consistent development and deployment environments
-- **CI/CD**: Automated pipelines using Jenkins and GitHub Actions
+* **Django 4.2+** & **Django REST Framework** for the backend
+* **PostgreSQL** for relational database management
+* **Redis** for caching
+* **JWT Authentication** for secure login and session management
+* **Cloudinary** for image hosting
+* **Docker** for containerization
+* **Swagger** for interactive API documentation
 
-### Important Backend Development Concepts
+## Quick Start
 
-- **Database Design**: Schema architecture, normalization, and advanced querying techniques
-- **Asynchronous Programming**: Non-blocking code execution and concurrent processing
-- **Caching Strategies**: Performance optimization through Django caching mechanisms and query optimization
+1. Clone the repository:
 
-### Challenges I Faced and Solutions I Implemented
+   ```bash
+   git clone <repository-url>
+   ```
 
-**Kubernetes Complexity**
-Had a really hard time understanding Kubernetes concepts and container orchestration. The networking, service discovery, and pod management were overwhelming. Spent extra time breaking down each component individually and practicing with simple deployments before attempting complex configurations.
+2. Build and start the services using Docker Compose:
 
-**RabbitMQ Message Broker**
-Struggled with understanding message queues and how RabbitMQ handles message routing and exchanges. The concepts of queues, exchanges, and routing keys were confusing. Worked through multiple tutorials and hands-on practice to grasp the message flow.
+   ```bash
+   docker-compose up --build
+   ```
 
-**Celery Background Tasks**
-Celery integration was challenging - connecting it with RabbitMQ and understanding task routing, retries, and monitoring. Had difficulty debugging failed tasks and setting up proper error handling. Required significant practice and reading documentation to implement reliable background job processing.
+3. Apply the database migrations:
 
-### Best Practices and Personal Takeaways
+   ```bash
+   docker-compose exec web python manage.py migrate
+   ```
 
-- **Test-Driven Development**: Write comprehensive tests before production deployment
-- **Security-First Design**: Implement security as a fundamental system component
-- **Scalable Architecture**: Design systems with horizontal scaling from the start
-- **Code Documentation**: Maintain clear documentation for all API endpoints
-- **Version Control**: Follow Git-flow methodology for organized development
-- **Performance Monitoring**: Regular monitoring and proactive optimization
-- **Error Handling**: Comprehensive logging and error management systems
+4. Create a superuser for administrative access:
+
+   ```bash
+   docker-compose exec web python manage.py createsuperuser
+   ```
+
+5. Access the API at [http://localhost:8000](http://localhost:8000/api/v1).
+
+## API Documentation
+
+Interactive API documentation is available at `/swagger` when the application is running locally. The documentation covers:
+
+* Endpoint details for all CRUD operations on products and categories
+* JWT authentication and usage
+* Request and response formats for each API
+
+## Development
+
+This project uses **Docker Compose** for the development environment. It includes PostgreSQL and Redis services. All Django management commands should be run using `docker-compose exec`.
+
+For example, to run tests:
+
+```bash
+docker-compose exec web python manage.py test
+```
+
+## Project Structure
+
+The project follows the standard Django structure, with additional Docker configuration files for easy local development.
+
+The key components include:
+
+* **`/app`**: The main Django application, including models, views, serializers, and API endpoints.
+* **`/docker`**: Docker-related configuration files.
+* **`/migrations`**: Database migration files for schema changes.
+* **`/docs`**: API documentation files and related configurations.
+
+---
+
+### Additional Notes:
+
+* **Pagination, Sorting, and Filtering**: These features are implemented for the products API to enable efficient browsing of large datasets.
+* **Database Optimization**: Indexing is implemented on key database fields to ensure fast queries, especially for product searches.
+* **Authentication**: JWT is used for secure, token-based authentication.
+
+---
